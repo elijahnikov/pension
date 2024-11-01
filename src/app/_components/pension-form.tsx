@@ -42,6 +42,8 @@ export default function PensionForm({
 		},
 	});
 
+	const pensionPotsWatch = form.watch("pensionPots");
+
 	const addPensionPot = () => {
 		const currentPots = form.getValues("pensionPots") as {
 			name: string;
@@ -117,7 +119,7 @@ export default function PensionForm({
 					)}
 				/>
 				<div className="space-y-2">
-					{form.watch("pensionPots").map((_, index) => (
+					{pensionPotsWatch.map((_, index) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 						<div key={index} className="items-center space-x-2 flex">
 							<FormField

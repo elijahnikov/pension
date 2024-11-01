@@ -17,7 +17,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 				<p className="font-bold mb-2">Age {label}</p>
 				{/* biome-ignore lint/suspicious/noExplicitAny: <explanation> */}
 				{payload.map((entry: any, index: number) => {
-					// Custom names for each data key
 					const nameMap: { [key: string]: string } = {
 						pensionValue: "Projected Pension",
 						targetValue: "Target Amount",
@@ -50,7 +49,7 @@ export default function Chart({ data }: { data: PensionProjection[] }) {
 				width={730}
 				height={380}
 				data={data}
-				margin={{ top: 5, right: 30, left: 20, bottom: 10 }}
+				margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
 			>
 				<CartesianGrid strokeDasharray="3 3" />
 				<XAxis dataKey="age" label={{ value: "Age", position: "bottom" }} />
@@ -68,7 +67,6 @@ export default function Chart({ data }: { data: PensionProjection[] }) {
 						const nameMap: { [key: string]: string } = {
 							pensionPot: "Projected Pension",
 							targetPot: "Target Amount",
-							withdrawals: "Annual Withdrawal",
 						};
 						return nameMap[value] || value;
 					}}
