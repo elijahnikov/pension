@@ -1,106 +1,96 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import {
-	FormField,
-	FormItem,
-	FormLabel,
-	FormControl,
-	FormDescription,
-	FormMessage,
-	Form,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { zodResolver } from "@hookform/resolvers/zod";
+	LineChart,
+	Line,
+	XAxis,
+	YAxis,
+	CartesianGrid,
+	Tooltip,
+	Legend,
+} from "recharts";
 
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import type { ChartConfig } from "@/components/ui/chart";
+import PensionForm, { type PensionFormData } from "./_components/pension-form";
+import { START_AGE, MAX_AGE, ANNUAL_INTEREST_RATE } from "@/lib/constants";
+import Chart from "./_components/chart";
 
-const ANNUAL_INTEREST_RATE = 0.049;
-const MAX_AGE = 81;
-const START_AGE = 25;
-
-const formSchema = z.object({
-	desiredAnnualRetirementIncome: z.number().min(1),
-	monthlyEmployerContribution: z.number().min(1),
-	monthlyPersonalContribution: z.number().min(1),
-	retirementAge: z.number().min(START_AGE).max(MAX_AGE),
-});
+export type PensionProjection = {
+	year: number;
+	age: number;
+	pensionValue: number;
+	phase: "Accumulation" | "Drawdown";
+	targetValue?: number;
+};
 
 export default function HomePage() {
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
-		defaultValues: {
-			desiredAnnualRetirementIncome: 0,
-			monthlyEmployerContribution: 0,
-			monthlyPersonalContribution: 0,
-			retirementAge: START_AGE,
-		},
-	});
+	const [pensionProjection, setPensionProjection] = useState<
+		PensionProjection[]
+	>([]);
 
-	function onSubmit(values: z.infer<typeof formSchema>) {
-		console.log(values);
+	function onSubmit(values: PensionFormData) {
+		calculatePensionProjection(values);
 	}
+
+	const calculatePensionProjection = ({
+		desiredAnnualRetirementIncome,
+		monthlyEmployerContribution,
+		monthlyPersonalContribution,
+		retirementAge,
+		pensionPots,
+	}: PensionFormData) => {
+		const projection: PensionProjection[] = [];
+		const currentYear: number = new Date().getFullYear();
+
+		let totalPot: number = pensionPots.reduce(
+			(acc, pot) => acc + pot.balance,
+			0,
+		);
+
+		const monthlyTotal: number =
+			monthlyEmployerContribution + monthlyPersonalContribution;
+		const yearsUntilRetirement: number = retirementAge - START_AGE;
+		const yearsAfterRetirement: number = MAX_AGE - retirementAge;
+
+		for (let year = 0; year <= yearsUntilRetirement; year++) {
+			totalPot =
+				totalPot * (1 + ANNUAL_INTEREST_RATE / 100) + monthlyTotal * 12;
+			projection.push({
+				year: currentYear + year,
+				age: START_AGE + year,
+				pensionValue: Math.round(totalPot),
+				phase: "Accumulation",
+			});
+		}
+
+		for (let year = 1; year <= yearsAfterRetirement; year++) {
+			totalPot =
+				(totalPot - desiredAnnualRetirementIncome) *
+				(1 + ANNUAL_INTEREST_RATE / 100);
+			projection.push({
+				year: currentYear + yearsUntilRetirement + year,
+				age: retirementAge + year,
+				pensionValue: Math.round(totalPot),
+				phase: "Drawdown",
+			});
+		}
+
+		const requiredPot: number =
+			desiredAnnualRetirementIncome * yearsAfterRetirement;
+		const targetLine: PensionProjection[] = projection.map((point) => ({
+			...point,
+			targetValue: requiredPot,
+		}));
+		setPensionProjection(targetLine);
+	};
 
 	return (
 		<main className="flex min-h-screen flex-col items-center justify-center">
-			<Form {...form}>
-				<form onSubmit={form.handleSubmit(onSubmit)}>
-					<FormField
-						control={form.control}
-						name="desiredAnnualRetirementIncome"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Desired Annual Retirement Income</FormLabel>
-								<FormControl>
-									<Input type="number" placeholder="0" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="monthlyEmployerContribution"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Monthly Employer Contribution</FormLabel>
-								<FormControl>
-									<Input type="number" placeholder="0" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="monthlyPersonalContribution"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Monthly Personal Contribution</FormLabel>
-								<FormControl>
-									<Input type="number" placeholder="0" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="retirementAge"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Retirement Age</FormLabel>
-								<FormControl>
-									<Input type="number" placeholder="0" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<Button type="submit">Submit</Button>
-				</form>
-			</Form>
+			<div className="min-w-[500px]">
+				<PensionForm onSubmit={onSubmit} />
+			</div>
+			<Chart data={pensionProjection} />
 		</main>
 	);
 }
